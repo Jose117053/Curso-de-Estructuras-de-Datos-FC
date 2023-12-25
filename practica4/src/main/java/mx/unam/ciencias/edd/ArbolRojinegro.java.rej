@@ -1,0 +1,250 @@
+--- src/main/java/mx/unam/ciencias/edd/ArbolRojinegro.java
++++ src/main/java/mx/unam/ciencias/edd/ArbolRojinegro.java
+@@ -31,7 +31,10 @@ public class ArbolRojinegro<T extends Comparable<T>>
+          * @param elemento el elemento del vértice.
+          */
+         public VerticeRojinegro(T elemento) {
++            super(elemento);
++            color=Color.NINGUNO;
+             // Aquí va su código.
++
+         }
+ 
+         /**
+@@ -40,6 +43,7 @@ public class ArbolRojinegro<T extends Comparable<T>>
+          */
+         @Override public String toString() {
+             // Aquí va su código.
++            return (this.color == Color.ROJO ? "R{" : "N{") + this.elemento.toString() + "}";
+         }
+ 
+         /**
+@@ -58,6 +62,7 @@ public class ArbolRojinegro<T extends Comparable<T>>
+             @SuppressWarnings("unchecked")
+                 VerticeRojinegro vertice = (VerticeRojinegro)objeto;
+             // Aquí va su código.
++            return color==vertice.color && super.equals(objeto);
+         }
+     }
+ 
+@@ -85,6 +90,7 @@ public class ArbolRojinegro<T extends Comparable<T>>
+      */
+     @Override protected Vertice nuevoVertice(T elemento) {
+         // Aquí va su código.
++        return new VerticeRojinegro(elemento);
+     }
+ 
+     /**
+@@ -96,6 +102,8 @@ public class ArbolRojinegro<T extends Comparable<T>>
+      */
+     public Color getColor(VerticeArbolBinario<T> vertice) {
+         // Aquí va su código.
++        VerticeRojinegro rjn=(VerticeRojinegro) vertice;
++        return rjn.color;
+     }
+ 
+     /**
+@@ -106,7 +114,53 @@ public class ArbolRojinegro<T extends Comparable<T>>
+      */
+     @Override public void agrega(T elemento) {
+         // Aquí va su código.
++        super.agrega(elemento);
++        VerticeRojinegro nuevo=(VerticeRojinegro) ultimoAgregado;
++        nuevo.color=Color.ROJO;
++        rebalanceoAgrega(nuevo);
+     }
++    private void rebalanceoAgrega(VerticeRojinegro vertice){
++
++        if(vertice==null || !esRojo(vertice))
++            return;
++        if(vertice.padre==null) {
++            vertice.color = Color.NEGRO;
++            return;
++        }
++        VerticeRojinegro papa=(VerticeRojinegro) vertice(vertice.padre);
++        if(esNegro(papa))
++            return;
++        VerticeRojinegro abuelo=(VerticeRojinegro) vertice(papa.padre);
++        VerticeRojinegro tio=asignaHermano(papa); //el hermano del papa del vertice es el tio
++
++        if(tio!=null && tio.color==Color.ROJO  ) {
++            tio.color = Color.NEGRO;
++            papa.color = Color.NEGRO;
++            abuelo.color = Color.ROJO;
++            rebalanceoAgrega(abuelo);
++            return;
++        }
++
++        if(esIzquierdo(papa) && esDerecho(vertice)) {
++            super.giraIzquierda(papa);
++            VerticeRojinegro temp=vertice;
++            vertice=papa;
++            papa=temp;
++        }else if(esDerecho(papa) && esIzquierdo(vertice)) {//si el papa es hijo derecho y el vertice es hijo izquierdo
++            super.giraDerecha(papa);
++            VerticeRojinegro temp=vertice;
++            vertice=papa;
++            papa=temp;
++        }
++        papa.color=Color.NEGRO;
++        abuelo.color=Color.ROJO;
++
++        if(esIzquierdo(vertice))
++            super.giraDerecha(abuelo);
++        else
++            super.giraIzquierda(abuelo);
++    }
++
+ 
+     /**
+      * Elimina un elemento del árbol. El método elimina el vértice que contiene
+@@ -114,8 +168,149 @@ public class ArbolRojinegro<T extends Comparable<T>>
+      * rebalancearlo.
+      * @param elemento el elemento a eliminar del árbol.
+      */
++
++
++    ///EL METODO TOSTRING DE ARBOLBINARIO ESTABA MAL :(, (aunque pasaba los tests) ESTO AFECTABA LOS TESTS EN ESTA PRACTICA :C :C
+     @Override public void elimina(T elemento) {
+         // Aquí va su código.
++        if(elemento==null)
++            return;
++
++        VerticeRojinegro vertice=(VerticeRojinegro) super.busca(elemento);
++        if(vertice==null)
++            return;
++
++        if(vertice.hayDerecho() && vertice.hayIzquierdo())
++            vertice=(VerticeRojinegro) super.intercambiaEliminable(vertice);
++
++        VerticeRojinegro fantasma=(VerticeRojinegro) nuevoVertice(null);
++        fantasma.color=Color.ROJO;
++
++        if(!vertice.hayIzquierdo() && !vertice.hayDerecho()) {
++            fantasma.color=Color.NEGRO;
++            vertice.izquierdo=fantasma;
++            fantasma.padre=vertice;
++        }
++
++        VerticeRojinegro hijo;
++        if(vertice.hayIzquierdo())
++            hijo=(VerticeRojinegro) vertice.izquierdo;
++        else
++            hijo=(VerticeRojinegro)vertice.derecho;
++
++        super.eliminaVertice(vertice);
++        elementos--;
++
++        if(esRojo(hijo) || esRojo(vertice) ) {//no debe retornar, si no, no se elimina al fantasma
++            hijo.color=Color.NEGRO;
++        }else
++            rebalanceoElimina(hijo);//cuando hijo y vertice son negros
++
++        if(fantasma==hijo){
++            if(raiz==fantasma) {
++                super.eliminaVertice(fantasma);
++                super.limpia();
++            }else if(esIzquierdo(fantasma))
++            fantasma.padre.izquierdo=null;
++        else
++            fantasma.padre.derecho=null;
++        }
++
++    }
++
++    private void rebalanceoElimina(VerticeRojinegro vertice){
++        if(vertice==null)
++            return;
++        //caso 1: padre null
++        if(vertice.padre==null)
++            return;
++        VerticeRojinegro papa=(VerticeRojinegro) vertice.padre;
++        VerticeRojinegro hermano=asignaHermano(vertice);
++
++        //caso 2: el hermano es rojo
++        if(esRojo(hermano)) {
++            papa.color = Color.ROJO;
++            hermano.color=Color.NEGRO;
++            if(esDerecho(vertice))
++                super.giraDerecha(papa);
++            else
++                super.giraIzquierda(papa);
++            papa=(VerticeRojinegro) vertice.padre;
++            if(esIzquierdo(vertice))
++                hermano=(VerticeRojinegro) papa.derecho;
++            else
++                hermano=(VerticeRojinegro) papa.izquierdo;
++        }
++
++        VerticeRojinegro hi=(VerticeRojinegro) hermano.izquierdo;
++        VerticeRojinegro hd=(VerticeRojinegro) hermano.derecho;
++        //caso 3: papa,hermano, hi y hd son negros
++        if(esNegro(hermano) && esNegro(hi) && esNegro(hd)) {
++            if(esNegro(papa)) {
++                hermano.color = Color.ROJO;
++                rebalanceoElimina(papa);
++                return;
++            }else{//cuando papa es rojo(caso 4)
++                hermano.color=Color.ROJO;
++                papa.color=Color.NEGRO;
++                return;
++            }
++        }
++
++        if((esIzquierdo(vertice) && esRojo(hi) && esNegro(hd)) || (esDerecho(vertice) && esNegro(hi) && esRojo(hd))) {
++            hermano.color = Color.ROJO;
++
++            if(esIzquierdo(vertice)){//caso 5 v es izquierdo
++                hi.color=Color.NEGRO;
++                super.giraDerecha(hermano);
++            }else{//caso 5.1 v es derecho
++                hd.color=Color.NEGRO;
++                super.giraIzquierda(hermano);
++            }
++            //reasigna hermano
++            hermano=asignaHermano(vertice);
++            //reasigna hermano.izquierdo y hermano.derecho
++            hi=(VerticeRojinegro) hermano.izquierdo;
++            hd=(VerticeRojinegro) hermano.derecho;
++        }
++
++        hermano.color=papa.color;
++        papa.color=Color.NEGRO;
++        if(esDerecho(vertice)) {
++            hi.color = Color.NEGRO;
++            super.giraDerecha(papa);
++        }
++        else {
++            hd.color = Color.NEGRO;
++            super.giraIzquierda(papa);
++        }
++
++    }
++    //se podria utilizar un solo metodo de color y si es izquierdo o derecho, pero considero que el codigo es más legible
++    //si cada caso tiene su metodo
++    private boolean esRojo(VerticeRojinegro vertice){
++        if(vertice==null)
++            return true;
++        return vertice.color==Color.ROJO;
++    }
++    private boolean esNegro(VerticeRojinegro vertice){
++        if(vertice==null)
++            return true;
++        return vertice.color==Color.NEGRO;
++    }
++    private boolean esIzquierdo(VerticeRojinegro vertice){
++        return vertice.padre.izquierdo==vertice;
++    }
++    private boolean esDerecho(VerticeRojinegro vertice){
++        return vertice.padre.derecho==vertice;
++    }
++    private VerticeRojinegro asignaHermano(VerticeRojinegro vertice){
++        VerticeRojinegro hermano;
++        if(esIzquierdo(vertice))
++            hermano=(VerticeRojinegro) vertice.padre.derecho;
++        else
++            hermano=(VerticeRojinegro) vertice.padre.izquierdo;
++       return hermano;
+     }
+ 
+     /**

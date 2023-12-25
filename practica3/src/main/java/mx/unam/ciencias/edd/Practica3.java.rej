@@ -1,0 +1,18 @@
+--- src/main/java/mx/unam/ciencias/edd/Practica3.java
++++ src/main/java/mx/unam/ciencias/edd/Practica3.java
+@@ -7,7 +7,6 @@ import java.text.NumberFormat;
+  * Práctica 3: Árboles binarios, binarios completos y binarios ordenados.
+  */
+ public class Practica3 {
+-
+     /* Imprime el uso del programa y lo termina. */
+     private static void uso() {
+         System.err.println("Uso: java -jar practica3.jar N");
+@@ -15,6 +14,7 @@ public class Practica3 {
+     }
+ 
+     public static void main(String[] args) {
++
+         if (args.length != 1)
+             uso();
+ 
